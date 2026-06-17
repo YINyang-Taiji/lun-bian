@@ -1,0 +1,17 @@
+# Test artifacts
+results.tsv
+trial-log.tsv
+*.bak.*
+blade-trials/
+
+# Showcase assets
+assets/*.gif
+assets/*.mp4
+
+# Package artifacts
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
