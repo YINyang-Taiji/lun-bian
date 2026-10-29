@@ -465,7 +465,8 @@ description: |
 
 ## Phase 3：淬火——Darwin 自进化循环
 
-> 融合 Darwin Skill 的完整自进化机制。核心原则：评估 → 改进 → 实测验证 → 保留或回滚。
+> 融合 **已升级版 Darwin Skill**（2026-10-23 后：含 root_cause 强制化、基线零回归预检、overlay/locked 隔离锁定、扩展反例黑名单 D2/D5、E1–E8 改进）的完整自进化机制。核心原则：评估 → 改进 → 实测验证 → 保留或回滚。
+> 本 Phase 3 直接复用 darwin-skill 的 9 维 Rubric 与棘轮逻辑；下方为其在本锻造流程中的具体落地与强化点。
 
 ### 九维评分 Rubric（总分 100）
 
@@ -497,15 +498,16 @@ Phase 3.2 优化循环（分数从低到高）：
     round = 0
     while round < MAX_ROUNDS:
       round += 1
-      1. 诊断最低维度（注意 dim2/3/4 相关簇）
-      2. 提出改进方案（改什么、为什么改、预期提升）
-      3. 执行改进（编辑 SKILL.md）
-      4. 重新评估（独立子 agent 评分）
+      1. 诊断最低维度，并强制书写「症状 → 根因」链路（对应升级版 Darwin M1：root_cause 列必填，不得只写表象）
+      2. 提出改进方案（改什么、为什么改、预期提升；同时看 dim2/3/4 相关簇，有证据可主改动+微调，无证据严格单改）
+      2.5 ⚠️ 基线零回归预检（对应升级版 Darwin M2）：结构性改动前，先做 impact 对比——确认不破坏既有能力 / 已批准态，再执行；影响已批准成品或属「全局 vs 局部」试探时，改用 overlay 模式（见下方隔离与锁定）
+      3. 执行改进（编辑 SKILL.md；如走 overlay，则写入 SKILL.md.overlay 或 patches/，不碰主文件）
+      4. 重新评估（独立子 agent 评分，强制报可量化前后指标；judge 未报数字则判为评估失效，重跑）
       5. 决策：
          if 新总分 > 旧总分: keep，更新旧分
          if 连续2轮 Δ < 2: break（触顶信号）
          else: revert + break
-      6. 记录到 results.tsv
+      6. 记录到 results.tsv（含 root_cause 列、scope 列：local/global/candidate；revert 轮填「为何失败/反模式类别」）
       🔴 CHECKPOINT：每个 skill 优化完后暂停，展示 diff 和分数变化
 
 Phase 3.3 探索性重写（按需）：
@@ -524,6 +526,15 @@ Phase 3.3 探索性重写（按需）：
 | 5 | 轮内改多个维度 | 每轮 1 个维度 |
 | 6 | dry_run 比例 > 30% | 强制至少 1 个 full_test |
 | 7 | 静默跳过异常 | 异常先告知用户再处理 |
+| 8 | **局部特例泛化为全局规则**（如把某次临时修正固化为通用约束，或把「某平台某次特例」写成全局铁律） | 标注作用域为 local；全局规则须经用户明确确认，不得自动升华（对应升级版 Darwin D2，源自微软 skill-recorder 教训：局部临时规则不得固化为全局） |
+| 9 | **同一类错误复发**（已修过的反模式再次出现） | 记入 results.tsv 复发栏，定位根因而非重复打补丁（对应升级版 Darwin D5） |
+
+### 隔离与锁定机制（overlay / locked，对应升级版 Darwin M3）
+
+- **overlay 模式**：会大改核心、影响已批准成品、或属「全局 vs 局部」试探的改动，先写入 side 文件（`SKILL.md.overlay` 或 `patches/`），**不碰主文件**；用户接受才合入、拒绝则零污染。
+- **locked 态**：用户说"OK/确认"即加锁（记 results.tsv 或 git tag）；加锁后只产 candidate，**绝不自动覆盖已批准版**，显式批准才替换，回退用 `git checkout <locked-tag>`。
+
+> 设计来源：微软 skill-recorder 的教训——"局部临时规则不得固化为全局"。轮扁淬火中凡涉及作用域升级的改动，一律先 overlay + 用户裁决。
 
 ---
 
